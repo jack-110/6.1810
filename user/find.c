@@ -18,12 +18,12 @@ fmtname(char *path)
   if(strlen(p) >= DIRSIZ)
     return p;
   memmove(buf, p, strlen(p));
-  memset(buf+strlen(p), ' ', DIRSIZ-strlen(p));
+  memset(buf+strlen(p), '\0', DIRSIZ-strlen(p));
   return buf;
 }
 
 void
-ls(char *path)
+find(char *path, char *file_name)
 {
   char buf[512], *p;
   int fd;
@@ -64,7 +64,20 @@ ls(char *path)
         printf("ls: cannot stat %s\n", buf);
         continue;
       }
-      printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+
+      switch (st.type){
+      case T_DIR:
+        if (strcmp(fmtname(buf), ".")!=0 && strcmp(fmtname(buf), "..")!=0){
+          find(buf, file_name);
+        }
+        break;
+      
+      case T_FILE:
+        if (strcmp(file_name, p) == 0){
+          printf("%s\n", buf);
+        }
+        break;
+      } 
     }
     break;
   }
@@ -74,13 +87,12 @@ ls(char *path)
 int
 main(int argc, char *argv[])
 {
-  int i;
-
-  if(argc < 2){
-    ls(".");
+  if (argc < 3){
+    printf("please input correct arguments\n");
     exit(0);
   }
-  for(i=1; i<argc; i++)
-    ls(argv[i]);
+  
+  find(argv[1], argv[2]);
+  
   exit(0);
 }
