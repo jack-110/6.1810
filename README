@@ -41,7 +41,6 @@ Please send errors and suggestions to Frans Kaashoek and Robert Morris
 operating system for MIT's 6.1810, so we are more interested in
 simplifications and clarifications than new features.
 
-
 BUILDING AND RUNNING XV6
 
 You will need a RISC-V "newlib" tool chain from

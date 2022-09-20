@@ -91,3 +91,12 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_trace(void)
+{
+  int tid;
+  argint(0, &tid);
+  myproc()->tid = tid;
+  return 0;
+}

@@ -7,6 +7,8 @@
         "param.h": "c",
         "riscv.h": "c",
         "memlayout.h": "c",
-        "defs.h": "c"
+        "defs.h": "c",
+        "proc.h": "c",
+        "syscall.h": "c"
     }
 }
