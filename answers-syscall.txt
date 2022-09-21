@@ -1,0 +1,6 @@
+1.backtrace
+2.value is 7, it means the syscall number
+3.machine
+4.panic("kerneltrap"), a7
+5. address is invalid
+6.initcode
