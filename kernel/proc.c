@@ -169,6 +169,8 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+  if(p->usyscallpg)
+    kfree((void*)p->usyscallpg);
   p->usyscallpg = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
@@ -216,7 +218,8 @@ proc_pagetable(struct proc *p)
   
   if(mappages(pagetable, USYSCALL, PGSIZE,
               (uint64)(p->usyscallpg), PTE_R | PTE_U) < 0){
-    uvmunmap(pagetable, USYSCALL, 1, 0);
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmunmap(pagetable, TRAPFRAME, 1, 0);
     uvmfree(pagetable, 0);
     return 0;
   }
