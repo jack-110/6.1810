@@ -1,0 +1,6 @@
+q1: RISC-V put arguments in reg a0-a7, and return value in a0-a1. So the call argument 13 of printf function store its value in a2.
+q2: Inline function. main function use the return value 12 directly. And function f inline function g.
+q3: 0x0000000000000642.
+q4: 0x38.
+q5: he110 world (0x00646c72=> 72 6c 64 00 in pysical memory.)
+q6: a2(printf will read the third argument in a2 reg.)
