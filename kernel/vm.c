@@ -354,19 +354,13 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     va0 = PGROUNDDOWN(dstva);
     pte_t *pte = walk(pagetable, va0, 0);
     uint flags = PTE_FLAGS(*pte);
-    if((flags & PTE_V) && (flags & PTE_COW)){
-      uint64 pa = PTE2PA(*pte);
-      if(getRef((char*)pa) == 1){
-        *pte = (*pte & (~PTE_COW)) | PTE_W;
-      } else { 
-        char *mem = kalloc();
-        if(mem== 0){
-          panic("kalloc failed\n");
-        } else {
-          memmove(mem, (char*)pa, PGSIZE);
-          uvmunmap(pagetable, va0, 1, 1);
-          mappages(pagetable, va0, PGSIZE, (uint64)mem, (flags & (~PTE_COW)) | PTE_W);
-        }
+    if((flags & PTE_V) && (flags & PTE_COW) && (flags & PTE_U)){
+      pa0 = (uint64)kalloc();
+      if(pa0 == 0){
+        panic("kalloc failed\n");
+      } else {
+        uvmunmap(pagetable, va0, 1, 1);
+        mappages(pagetable, va0, PGSIZE, pa0, (flags & (~PTE_COW)) | PTE_W);
       }
     }
 

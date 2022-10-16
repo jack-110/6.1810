@@ -30,6 +30,43 @@ trapinithart(void)
 }
 
 //
+// -1 means wrong
+// 0 means wrong but it's ok and should not be killed
+// or return new pyhsical address
+//
+int
+handelcow(pagetable_t pg)
+{
+    uint64 pa, va;
+    uint flags;
+    pte_t *pte;
+    char *mem;
+
+    va = PGROUNDDOWN(r_stval());
+    
+    if((pte=walk(pg, va, 0)) == 0){
+      panic("usertrup: pte should exist");
+      return -1;
+    }
+
+    pa = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+
+    if((flags & PTE_V) && (flags & PTE_COW)){
+      mem = kalloc();
+      if(mem== 0){
+        printf("usertrap kalloc failed\n");
+        return -1;
+      } else {
+        memmove(mem, (char*)pa, PGSIZE);
+        uvmunmap(pg, va, 1, 1);
+        mappages(pg, va, PGSIZE, (uint64)mem, (flags & (~PTE_COW)) | PTE_W);
+      }
+    }
+    return 0;
+}
+
+//
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
 //
@@ -68,38 +105,8 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   } else if(r_scause() == 15){
-    pagetable_t pg;
-    uint64 pa, va;
-    uint flags;
-    pte_t *pte;
-    char *mem;
-
-    va = PGROUNDDOWN(r_stval());
-    
-    //struct proc *p = myproc();
-    pg = p->pagetable;
-    
-    if((pte=walk(pg, va, 0)) == 0){
-      panic("usertrup: pte should exist");
-    }
-
-    pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-
-    if((flags & PTE_V) && (flags & PTE_COW)){
-      if(getRef((char*)pa) == 1){
-        *pte = (*pte & (~PTE_COW)) | PTE_W;
-      } else { 
-        mem = kalloc();
-        if(mem== 0){
-          printf("usertrap kalloc failed\n");
-          setkilled(p);
-        } else {
-          memmove(mem, (char*)pa, PGSIZE);
-          uvmunmap(pg, va, 1, 1);
-          mappages(pg, va, PGSIZE, (uint64)mem, (flags & (~PTE_COW)) | PTE_W);
-        }
-      }
+    if(handelcow(p->pagetable) != 0){
+      setkilled(p);
     }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
