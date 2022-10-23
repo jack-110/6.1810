@@ -48,10 +48,14 @@ lazyalloc(pagetable_t pg, pte_t *pte, uint64 va)
 }
 
 int
-cowpage(pagetable_t pg, pte_t *pte, uint64 va)
+cowpage(pagetable_t pg, uint64 va)
 {
   if(va >= MAXVA)
     return -1;
+  pte_t *pte = walk(pg, va, 0);
+  if(pte == 0)
+    return -1;
+
   if((*pte & PTE_V) == 0)
     return -1;
   if(*pte & PTE_COW)
@@ -100,12 +104,11 @@ usertrap(void)
   } else if(r_scause() == 15) {
     pagetable_t pg = p->pagetable;
     uint64 va = PGROUNDDOWN(r_stval());
-    pte_t *pte = walk(pg, va, 0);
-    if(cowpage(pg, pte, va) == 0){
+    if(cowpage(pg, va) == 0){
+      pte_t *pte = walk(pg, va, 0);
       if(lazyalloc(pg, pte, va) == -1)
         setkilled(p);
     } else {
-      panic("unhandle page fault\n");
       setkilled(p);
     }
   } else {
