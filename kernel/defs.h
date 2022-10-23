@@ -150,6 +150,7 @@ void            trapinithart(void);
 extern struct spinlock tickslock;
 void            usertrapret(void);
 uint64          lazyalloc(pagetable_t pg, pte_t *pte, uint64 va);
+int             cowpage(pagetable_t pg, uint64 va);
 
 // uart.c
 void            uartinit(void);

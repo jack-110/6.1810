@@ -356,6 +356,10 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
+    if(cowpage(pagetable, va0) == 0){
+      pte_t *pte = walk(pagetable, va0, 0);
+      pa0 = lazyalloc(pagetable, pte, va0);
+    }
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
