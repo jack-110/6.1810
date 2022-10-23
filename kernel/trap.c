@@ -29,6 +29,36 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+uint64
+lazyalloc(pagetable_t pg, pte_t *pte, uint64 va)
+{
+  char *mem = kalloc();
+  if(mem == 0){
+    printf("usertrap kalloc failed\n");
+    return -1;
+  } else {
+    uint64 pa = PTE2PA(*pte);
+    uint64 flags = PTE_FLAGS(*pte);
+    memmove(mem, (char*)pa, PGSIZE);
+    uvmunmap(pg, va, 1, 1);
+    mappages(pg, va, PGSIZE, (uint64)mem, (flags & (~PTE_COW)) | PTE_W);
+    return (uint64)mem;
+  }
+  return 0;
+}
+
+int
+cowpage(pagetable_t pg, pte_t *pte, uint64 va)
+{
+  if(va >= MAXVA)
+    return -1;
+  if((*pte & PTE_V) == 0)
+    return -1;
+  if(*pte & PTE_COW)
+    return 0;
+  return -1;
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -67,6 +97,17 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if(r_scause() == 15) {
+    pagetable_t pg = p->pagetable;
+    uint64 va = PGROUNDDOWN(r_stval());
+    pte_t *pte = walk(pg, va, 0);
+    if(cowpage(pg, pte, va) == 0){
+      if(lazyalloc(pg, pte, va) == -1)
+        setkilled(p);
+    } else {
+      panic("unhandle page fault\n");
+      setkilled(p);
+    }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
