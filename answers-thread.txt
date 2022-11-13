@@ -1,0 +1,4 @@
+update: multiple threads can excute the same instruction at the same time, so the latter one can onverride the prior one.
+  e->value = value;
+insert: same as above
+  *p = e;

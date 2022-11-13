@@ -14,9 +14,17 @@ struct entry {
   struct entry *next;
 };
 struct entry *table[NBUCKET];
+pthread_mutex_t locks[NBUCKET];
 int keys[NKEYS];
 int nthread = 1;
 
+void
+lockinit()
+{
+  for (int i = 0; i < NBUCKET; i++) {
+    pthread_mutex_init(&locks[i], NULL);
+  }
+}
 
 double
 now()
@@ -49,12 +57,15 @@ void put(int key, int value)
   }
   if(e){
     // update the existing key.
-    e->value = value;
+    pthread_mutex_lock(&locks[i]);
+    e->value = value;   
+    pthread_mutex_unlock(&locks[i]);
   } else {
     // the new is new.
+    pthread_mutex_lock(&locks[i]);
     insert(key, value, &table[i], table[i]);
+    pthread_mutex_unlock(&locks[i]);
   }
-
 }
 
 static struct entry*
@@ -122,6 +133,7 @@ main(int argc, char *argv[])
   // first the puts
   //
   t0 = now();
+  lockinit();
   for(int i = 0; i < nthread; i++) {
     assert(pthread_create(&tha[i], NULL, put_thread, (void *) (long) i) == 0);
   }
