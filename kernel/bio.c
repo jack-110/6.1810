@@ -45,11 +45,12 @@ binit(void)
   }
   
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
-    b->next = bcache.buckets[0].next;
-    b->prev = &bcache.buckets[0];
+    int index = b->blockno % NBUC;
+    b->next = bcache.buckets[index].next;
+    b->prev = &bcache.buckets[index];
     initsleeplock(&b->lock, "buffer");
-    bcache.buckets[0].next->prev = b;
-    bcache.buckets[0].next = b;
+    bcache.buckets[index].next->prev = b;
+    bcache.buckets[index].next = b;
   }
 }
 
@@ -66,7 +67,6 @@ bget(uint dev, uint blockno)
 
   // Is the block already cached?
   for(b = bcache.buckets[index].next; b != &bcache.buckets[index]; b = b->next) {
-    printf("cached? \n");
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.lock[index]);
@@ -74,9 +74,32 @@ bget(uint dev, uint blockno)
       return b;
     }
   }
-
-  // Not cached.
-  // Recycle the least recently used (LRU) unused buffer.
+  //relink free buffer.
+  for (int i = 0; i < NBUC; i++) {
+    if (i == index) continue;
+    acquire(&bcache.lock[i]);
+    for(b = bcache.buckets[i].next; b != &bcache.buckets[i]; b = b->next) {
+      if(b->refcnt == 0){
+        b->dev = dev;
+        b->blockno = blockno;
+        b->valid = 0;
+        b->refcnt = 1;
+        b->next->prev = b->prev;
+        b->prev->next = b->next;
+        
+        b->prev = &bcache.buckets[index];
+        b->next = bcache.buckets[index].next;
+        bcache.buckets[index].next->prev = b;
+        bcache.buckets[index].next = b;
+        
+        release(&bcache.lock[index]);
+        release(&bcache.lock[i]);
+        acquiresleep(&b->lock);
+        return b;
+      }
+    }
+    release(&bcache.lock[i]);
+  }
   panic("bget: no buffers");
 }
 
